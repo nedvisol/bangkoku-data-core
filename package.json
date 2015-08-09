@@ -1,12 +1,12 @@
 {
-  "name": "documentstore-access-lib",
-  "version": "0.0.0",
+  "name": "bangkoku-data-core",
+  "version": "0.0.1",
   "description": "The best module ever.",
   "author": {
     "name": "Ned Visol",
     "email": ""
   },
-  "repository": "nedvisol/documentstore-access-lib",
+  "repository": "nedvisol/bangkoku-data-core",
   "license": "MIT",
   "files": [
     "index.js"
