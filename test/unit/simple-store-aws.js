@@ -8,6 +8,8 @@ var ddl = new D('generic');
 
 
 describe('DataAccess V2', function(){
+  var num = 0xffffffffffffffff;
+  console.log('nnn '+num.toString(36));
   var genIdStub = sinon.stub(ddl, 'generateId', function(){
     return 'A0000';
   });
