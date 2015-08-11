@@ -26,7 +26,7 @@ module.exports = function (grunt) {
         reporter: 'nyan',
         bail: true
       },
-      all: ['test/unit/*.js'],
+      unit: ['test/unit/*.js'],
       int: ['test/int/*.js']
     },
     watch: {
@@ -46,6 +46,6 @@ module.exports = function (grunt) {
   });
 
   grunt.registerTask('default', ['jshint', 'mochacli']);
-  grunt.registerTask('test', ['mochacli']);
+  grunt.registerTask('test', ['mochacli:unit']);
   grunt.registerTask('inttest', ['mochacli:int']);
 };
