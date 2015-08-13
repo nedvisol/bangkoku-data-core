@@ -1,17 +1,25 @@
 var assert = require('assert');
 var sinon = require('sinon');
 var D = require('../../index.js').SimpleStore('aws');
+var mmHash = require('../../lib/murmur-hash.js');
 var Q = require('Q'),
-  util = require('util');
+  util = require('util'),
+  jsep = require('jsep'),
+  _ = require('underscore');
 
 var ddl = new D('generic');
 
 
-describe('DataAccess V2', function(){
-  var num = 0xffffffffffffffff;
-  console.log('nnn '+num.toString(36));
-  var genIdStub = sinon.stub(ddl, 'generateId', function(){
+describe('SimpleStore-AWS', function(){
+  /*var genIdStub = sinon.stub(ddl, 'generateId', function(){
     return 'A0000';
+  });*/
+  describe('#generateId()', function() {
+    it('should generate string representation of UUID v4', function(){
+      var id = ddl.generateId();
+      console.log('Generate ID: '+id);
+      assert.ok(id.length > 20);
+    });
   });
   describe('#_Json2DynDB', function(){
     it('should convert JSON obj to DynamoDB structure', function(){
@@ -148,12 +156,16 @@ describe('DataAccess V2', function(){
       var getStub = sinon.stub(ddl, 'get', function(id, classId){
         return Q(expectedData);
       });
+      var genIdStub = sinon.stub(ddl, 'generateId', function(){
+        return 'A0000';
+      });
 
       ddl.put('row-id', 'class-id', json, ['str','num'])
       .done(function(data){
         assert.ok(batchStub.calledOnce, 'batchWriteItem should be called');
         batchStub.restore();
         getStub.restore();
+        genIdStub.restore();
         assert.deepEqual(actual, expected);
         assert.equal(data, expectedData);
         done();
@@ -161,9 +173,164 @@ describe('DataAccess V2', function(){
         console.log(err);
         assert.ok(false);
       });
-
-
     });
+
+    it('should use idxOptions parameter and create additional index info', function(done){
+      var json = {
+        str : 'string field',
+        num : 100,
+        strArr : ['hello', 'test'],
+        map: {
+          foo: 'string foo',
+          bar: 100
+        },
+        mapArr: [ { fooA : 'barA'}],
+        bool: true,
+        null: null
+      };
+
+      var idxOptions = {
+        'strAndNum' : { type: 'combo', attributes: ['str','num'] },
+        'strAndBool' : { type: 'combo', attributes: ['str','bool'] },
+      };
+
+      var strAndNum = mmHash(JSON.stringify([100, 'string field']), 100).toString();
+      var strAndBool = mmHash(JSON.stringify([true, 'string field']), 100).toString();
+
+      var expected = {
+        RequestItems: {
+          'dd-generic' : [
+            {
+              PutRequest: {
+              Item : {
+                _id : { S : 'row-id'},
+                _class : { S : 'class-id' },
+                _rev : { S : 'A0000' },
+                _indexHint: { SS : ['str', 'num']},
+                str : { S : 'string field' },
+                num : { N : '100' },
+                strArr : { SS : ['hello', 'test'] },
+                map : { M : {
+                  foo : { S : 'string foo'},
+                  bar : { N : '100' }
+                }},
+                mapArr : { L : [ { M : { fooA : {S : 'barA'}}} ]},
+                bool: { BOOL : true },
+                null: { NULL : true }
+              }
+            }
+          }
+          ],
+          'dd-idx-generic' : [
+            {
+             PutRequest : {
+              Item : {
+                _id : { S : 'row-id.class-id.str'},
+                searchKey: {S : 'class-id.str'},
+                Svalue: { S : 'string field' },
+                data: { M : {
+                  str : {S : 'string field'},
+                  num : { N : '100' }
+                }}
+              }
+             }
+           },
+           {
+            PutRequest : {
+             Item : {
+               _id : { S : 'row-id.class-id.num'},
+               searchKey: {S : 'class-id.num'},
+               Nvalue: { N : '100' },
+               data: { M : {
+                 str : {S : 'string field'},
+                 num : { N : '100' }
+               }}
+             }
+            }
+          },
+          {
+           PutRequest : {
+            Item : {
+              _id : { S : 'row-id.class-id.strAndNum'},
+              searchKey: {S : 'class-id.strAndNum'},
+              Nvalue: { N : strAndNum },
+              data: { M : {
+                str : {S : 'string field'},
+                num : { N : '100' }
+              }}
+            }
+           }
+          },
+          {
+           PutRequest : {
+            Item : {
+              _id : { S : 'row-id.class-id.strAndBool'},
+              searchKey: {S : 'class-id.strAndBool'},
+              Nvalue: { N : strAndBool },
+              data: { M : {
+                str : {S : 'string field'},
+                num : { N : '100' }
+              }}
+            }
+           }
+          }
+         ]
+        }
+      };
+
+      //console.log('***' + util.inspect(ddl, true, 1));
+      var expectedData = {
+        _id: 'row-id',
+        _class: 'generic-class-id',
+        _rev : 'rev00',
+        str : 'string field',
+        num : 100,
+        strArr : ['hello', 'test'],
+        map: {
+          foo: 'string foo',
+          bar: 100
+        },
+        mapArr: [ { fooA : 'barA'}],
+        bool: true,
+        null: null,
+      };
+
+      var actual = null;
+      var batchStub = sinon.stub(ddl._dynamoDB, 'batchWriteItem', function(params, callback){
+          //console.log('********');
+          //console.log(util.inspect(params, true, null));
+          //console.log('********');
+          //console.log(util.inspect(expected, true, null));
+          actual = params;
+          callback(false, {});
+      });
+      var getStub = sinon.stub(ddl, 'get', function(id, classId){
+        return Q(expectedData);
+      });
+      var genIdStub = sinon.stub(ddl, 'generateId', function(){
+        return 'A0000';
+      });
+      var dateNowStub = sinon.stub(Date, 'now', function(){
+        return 100;
+      });
+
+      ddl.put('row-id', 'class-id', json, ['str','num'], {indexOptions: idxOptions})
+      .done(function(data){
+        assert.ok(batchStub.calledOnce, 'batchWriteItem should be called');
+        batchStub.restore();
+        getStub.restore();
+        genIdStub.restore();
+        dateNowStub.restore();
+        assert.deepEqual(actual, expected);
+        assert.equal(data, expectedData);
+        done();
+      }, function err(err){
+        console.log(err);
+        assert.ok(false);
+      });
+    });
+
+
   });
 
   describe('#_DynDB2Json', function(){
@@ -346,6 +513,9 @@ describe('DataAccess V2', function(){
         actualBatchParams = params;
         callback(false, {});
       });
+      var genIdStub = sinon.stub(ddl, 'generateId', function(){
+        return 'A0000';
+      });
 
       var json = {
         _id : 'row-id',
@@ -364,6 +534,7 @@ describe('DataAccess V2', function(){
         //assert.deepEqual(actualData, expectedData);
         stub.restore();
         batchStub.restore();
+        genIdStub.restore();
         done();
       }, function err(err){
         throw err;
@@ -417,7 +588,38 @@ describe('DataAccess V2', function(){
         console.log(err);
         assert.ok(false);
       });
+    });
+  });
 
+  describe('#query() new version', function(){
+    it('should break query conditions into queries and merge the results', function(done){
+
+      var idxOptions = {
+        'strAndNum' : { type: 'combo', attributes: ['str','num'] },
+        'strAndBool' : { type: 'combo', attributes: ['str','bool'] },
+      };
+
+      var singleQueryStub = sinon.stub(ddl, '_singleQuery', function(classId, qc){
+        var qc1 = _.isEqual(qc, {attr: 'str', op: '=', value: 'string value'});
+        var qc2 = _.isEqual(qc, {attr: 'num', op: '=', value: 100});
+        //console.log(util.inspect(qc));
+        assert.ok(qc1 || qc2);
+        if (qc1) {
+          return Q([{_id : 'row-id1'},{_id : 'row-id2'} ]);
+        } else if (qc2) {
+          return Q([{_id : 'row-id2'},{_id : 'row-id3'} ]);
+        }
+      });
+
+      ddl.query('generic-class-id', {
+        conditions: '(str == "string value") && (num == 100)',
+        indexOptions: idxOptions
+      })
+      .done(function(results){
+        assert.deepEqual(results, [{_id : 'row-id2'}]);
+        singleQueryStub.restore();
+        done();
+      });
     });
   });
 
@@ -481,5 +683,28 @@ describe('DataAccess V2', function(){
 
     });
   });
+
+  describe('#_queryExpressionGetQueries()', function(){
+    it('should identify all queries in expression', function(){
+      var expr1 = 'str == "string value"';
+      var expected1 = [{attr: 'str', op:'=', value:'string value'}];
+      var expr2 = '(str == "string value") && (num == 100)';
+      var expected2 = [{attr: 'str', op:'=', value:'string value'},
+        {attr: 'num', op:'=', value: 100}];
+      var expr3 = '(str == "string value") && ((num == 100) || (num > 200))';
+      var expected3 = [{attr: 'str', op:'=', value:'string value'},
+        {attr: 'num', op:'=', value: 100}, {attr: 'num', op:'>', value: 200}];
+      var strAndBool = mmHash(JSON.stringify([true, 'string field']), 100).toString();
+      var expr4 = 'comboIndexMatch(["str","bool"], ["string value", true])';
+      var expected4 = [{attr: ["str","bool"], op:'comboIndexMatch', value: ["string value", true] }];
+
+      assert.deepEqual(ddl._queryExpressionGetQueries(jsep(expr1)), expected1);
+      assert.deepEqual(ddl._queryExpressionGetQueries(jsep(expr2)), expected2);
+      assert.deepEqual(ddl._queryExpressionGetQueries(jsep(expr3)), expected3);
+      assert.deepEqual(ddl._queryExpressionGetQueries(jsep(expr4)), expected4);
+
+    });
+  });
+
 
 });
