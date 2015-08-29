@@ -5,6 +5,10 @@ var D = require('../../index.js').SimpleStore('aws');
 
 var ddl = new D('generic');
 
+/**** Initialize
+var D = new (require('./index.js').SimpleStore('aws'))('generic');
+D.initializeDataStore(1,1).done(function(){});
+**/
 
 
 describe('DataAccessV2', function(){
@@ -86,7 +90,7 @@ describe('DataAccessV2', function(){
       });
     });
   });
-
+/*
   describe('#query()', function(){
     it('should find the data based on the index', function(done){
       var expected = [{
@@ -102,7 +106,7 @@ describe('DataAccessV2', function(){
       });
     });
   });
-
+*/
   describe('#delete()', function(){
     it('should delete item', function(done){
       ddl.delete('row-id', 'generic-class-id')
