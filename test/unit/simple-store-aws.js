@@ -1,3 +1,7 @@
+//Add environment variables
+process.env.AWS_REGION = 'unittest';
+process.env.AWS_S3_BUCKET = 'unittest';
+
 var assert = require('assert');
 var sinon = require('sinon');
 var D = require('../../index.js').SimpleStore('aws');
@@ -119,20 +123,27 @@ describe('SimpleStore-AWS', function(){
         { PutRequest: { Item: {
           lookupKey : { S : 'classId.str=string field'},
           id : {S : 'rowId'},
-          sortVal : { S : '0000000000000034'}, //base 32 of 100
           data : { M : { str : { S : 'string field'}, num : { N : '100'} }}
         }}},
         { PutRequest: { Item: {
           lookupKey : { S : 'classId.num=0000000000000034'},
           id : {S : 'rowId'},
+          data : { M : { str : { S : 'string field'}, num : { N : '100'} }}
+        }}},
+        { PutRequest: { Item: {
+          lookupKey : { S : 'classId.strSorted=string field'},
+          id : {S : 'rowId'},
           sortVal : { S : '0000000000000034'}, //base 32 of 100
           data : { M : { str : { S : 'string field'}, num : { N : '100'} }}
-        }}}
+        }}},
       ];
 
       var previewData = { str: 'string field', num: 100};
 
-      var actual = ddl._generateIndexItems('rowId', 'classId', json, previewData , { sortAttr: 'num'});
+      var actual = ddl._generateIndexItems('rowId', 'classId', json, previewData , { strSorted : {
+          attr: 'str', sortAttr: 'num'
+       } });
+
       assert.deepEqual(actual, expected);
 
     });
