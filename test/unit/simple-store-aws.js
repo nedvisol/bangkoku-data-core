@@ -505,6 +505,59 @@ describe('SimpleStore-AWS', function(){
 
     });
 
+  }); //end ddl.delete
+
+  describe('#query()', function(){
+    it('should reject if require fields are missing', function(done){
+      ddl.query('classId', {}, null)
+      .done(function(){
+        throw 'should not be here';
+      }, function(e){
+        assert.ok(e.indexOf('err.query.missingrequiredparams'));
+        done();
+      });
+    });
+
+    it('should execute a query and return with data with sort attr', function(done){
+      var ss = {
+        query: sinon.stub(ddl, '_awsQuery')
+      };
+      ss.query.onCall(0).returns(Q({
+        Items: [
+          ddl._Json2DynDB({id : 'rowId1', data: {foo: 'bar1'}}),
+          ddl._Json2DynDB({id : 'rowId2', data: {foo: 'bar2'}}),
+        ]
+      }));
+
+      var expectedQueryParams = {
+        TableName: 'dd-idx-generic',
+        IndexName: 'sortVal-idx',
+        KeyConditionExpression: 'lookupKey = :lk',
+        ExpressionAttributeValues: {
+          ':lk' : { S : 'classId.strSorted=string value'}
+        },
+        ScanIndexForward: true,
+        Select: 'ALL_PROJECTED_ATTRIBUTES'
+      };
+
+      var expectedResults = [
+        {_id : 'rowId1', data: {foo: 'bar1'}},
+        {_id : 'rowId2', data: {foo: 'bar2'}}
+      ];
+
+      ddl.query('classId', {indexName: 'strSorted', value: 'string value', sort: 'A'}, null)
+      .done(function(results){
+        assert.deepEqual(ss.query.getCall(0).args, [expectedQueryParams]);
+        assert.deepEqual(results, expectedResults);
+
+        restoreAll(ss);
+        done();
+      }, function(e){
+        throw e;
+      });
+
+    });
+
   });
 
 

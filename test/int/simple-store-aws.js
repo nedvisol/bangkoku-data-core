@@ -14,7 +14,7 @@ D.initializeDataStore(1,1).done(function(){});
 describe('DataAccessV2', function(){
   this.timeout(10000);
   describe('#put()', function(){
-    it('should insert data into data store', function(done){
+    it('should insert data into data store 1', function(done){
       var json = {
         str : 'string field',
         num : 100,
@@ -27,7 +27,10 @@ describe('DataAccessV2', function(){
         bool: true,
         null: null
       };
-      ddl.put('row-id', 'generic-class-id', json, ['str', 'num'])
+      ddl.put('row-id', 'generic-class-id', json, { previewAttrs: ['str','num'], indexOptions: { strSorted : {
+          attr: 'str', sortAttr: 'num'
+       } } })
+      .delay(1000)
       .done(function(){
         done();
       }, function err(err){
@@ -35,6 +38,67 @@ describe('DataAccessV2', function(){
         assert.ok(false);
       });
     });
+
+    it('should insert data into data store 2', function(done){
+      var json = {
+        str : 'string field',
+        num : 101,
+      };
+      ddl.put('row-id2', 'generic-class-id', json, { previewAttrs: ['str','num'], indexOptions: { strSorted : {
+          attr: 'str', sortAttr: 'num'
+       } } })
+      .delay(1000)
+      .done(function(){
+        done();
+      }, function err(err){
+        console.log(err);
+        assert.ok(false);
+      });
+    });
+
+    it('should insert data into data store 3', function(done){
+      var json = {
+        str : 'string fieldXX',
+        num : 102,
+      };
+      ddl.put('row-id3', 'generic-class-id', json, { previewAttrs: ['str','num'], indexOptions: { strSorted : {
+          attr: 'str', sortAttr: 'num'
+       } } })
+      .delay(1000)
+      .done(function(){
+        done();
+      }, function err(err){
+        console.log(err);
+        assert.ok(false);
+      });
+    });
+
+  });
+
+  describe('#query()', function(){
+    it('should retrieve 2 rows based on str attr with sort', function(done){
+      ddl.query('generic-class-id', {indexName: 'strSorted', value: 'string field', sort: 'D'}, null)
+      .done(function(results){
+        console.log('******* query results *****');
+        console.log(util.inspect(results, true, null));
+        console.log('***************************');
+        assert.equal(2, results.length);
+        done();
+      });
+    });
+
+    it('should retrieve 2 rows based on str attr with no sort', function(done){
+      ddl.query('generic-class-id', {indexName: 'str', value: 'string field'}, null)
+      .done(function(results){
+        console.log('******* query results *****');
+        console.log(util.inspect(results, true, null));
+        console.log('***************************');
+        assert.equal(2, results.length);
+        done();
+      });
+    });
+
+
   });
 
   var jsonData = null;
@@ -59,8 +123,8 @@ describe('DataAccessV2', function(){
         throw err;
       });
     });
-
   });
+
 
 
   describe('#update()', function(){
@@ -68,7 +132,9 @@ describe('DataAccessV2', function(){
       var json = _.extend({}, jsonData);
       json.str = 'new string2';
       json.num = 200;
-      ddl.update('row-id', 'generic-class-id', json)
+      ddl.update('row-id', 'generic-class-id', json, { previewAttrs: ['str','num'], indexOptions: { strSorted : {
+          attr: 'str', sortAttr: 'num'
+       } } })
       .done(function(results){
         console.log(util.inspect(results, true, null));
         done();
@@ -107,14 +173,54 @@ describe('DataAccessV2', function(){
     });
   });
 */
+
+
+describe('#query()', function(){
+  it('should retrieve 1 rows based on str attr with sort', function(done){
+    ddl.query('generic-class-id', {indexName: 'strSorted', value: 'string field', sort: 'D'}, null)
+    .done(function(results){
+
+      console.log('******* query results *****');
+      console.log(util.inspect(results, true, null));
+      console.log('***************************');
+      assert.equal(1, results.length);
+      done();
+    });
+  });
+
+  it('should retrieve 1 rows based on str attr with no sort', function(done){
+    ddl.query('generic-class-id', {indexName: 'str', value: 'string field'}, null)
+    .done(function(results){
+      console.log('******* query results *****');
+      console.log(util.inspect(results, true, null));
+      console.log('***************************');
+      assert.equal(1, results.length);
+      done();
+    });
+  });
+
+
+});
+
+
   describe('#delete()', function(){
     it('should delete item', function(done){
-      ddl.delete('row-id', 'generic-class-id')
+      ddl.delete('row-id', 'generic-class-id', { indexOptions: { strSorted : {
+          attr: 'str', sortAttr: 'num'
+       } } })
+      .then(function(){
+        return ddl.delete('row-id2', 'generic-class-id',{ indexOptions: { strSorted : {
+            attr: 'str', sortAttr: 'num'
+         } } })
+      })
+      .then(function(){
+        return ddl.delete('row-id3', 'generic-class-id', {indexOptions: { strSorted : {
+            attr: 'str', sortAttr: 'num'
+         } } })
+      })
       .done(function(){
         done();
-      }, function(err){
-        throw err;
-      });
+      })
     });
   });
 
