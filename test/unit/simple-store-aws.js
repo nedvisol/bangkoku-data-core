@@ -183,7 +183,9 @@ describe('SimpleStore-AWS', function(){
               Item : ddl._Json2DynDB(dbData)
             }}
           ],
-          'dd-idx-generic' : ddl._generateIndexItems('rowId', 'classId', json, previewData , { sortAttr: 'num'})
+          'dd-idx-generic' : ddl._generateIndexItems('rowId', 'classId', json, previewData , { strSorted : {
+              attr: 'str', sortAttr: 'num'
+           } })
         }
       }; //end expected
 
@@ -194,7 +196,9 @@ describe('SimpleStore-AWS', function(){
 
       ss.batchWrite.onCall(0).returns(Q(true));
 
-      ddl.put('rowId', 'classId', json, ['str','num'], { indexOptions: {sortAttr: 'num'} })
+      ddl.put('rowId', 'classId', json,  { previewAttrs: ['str','num'], indexOptions: { strSorted : {
+          attr: 'str', sortAttr: 'num'
+       } } })
       .done(function(results){
         assert.deepEqual(results, dbData);
         assert.deepEqual(ss.batchWrite.getCall(0).args, [expected]);
@@ -280,11 +284,61 @@ describe('SimpleStore-AWS', function(){
     });
   });
 
+  //this.update = function(id, classId, json, options)
   describe('#update()', function(){
-    it('should invoke updateItem', function(done){
-      var expectedParams = {
+    //check if all required attributes are present, including _rev; throw exception otherwise
+    //update record, get old values back
+    //determine attributes with changed values
+    //generate delete requests for invalidated index records
+    //generate put requests for new index records
+    //insert index records
+    it('should return rejected promise if required attributes are not present', function(done){
+      var json = {
+        _id : 'rowId1',
+        str: 'new string'
+      };
+      ddl.update('rowId', 'classId', json, {})
+      .done(function(){
+        throw 'Should not be here';
+      }, function(e){
+        assert.ok(e.indexOf('err.ddl.missingrevattr') >= 0);
+        done();
+      });
+    });
+    it('should update the item and index records', function(done){
+      //update record, get old values back
+      //determine attributes with changed values
+      //generate delete requests for invalidated index records
+      //generate put requests for new index records
+      //insert index records
+      var ss = {
+        id : sinon.stub(ddl, 'generateId', function(){ return 'rev100'}),
+        update: sinon.stub(ddl, '_awsUpdate'),
+        batchWrite: sinon.stub(ddl, '_awsBatchWrite')
+      };
+      ss.update.onCall(0).returns(Q({
+        Attributes: ddl._Json2DynDB({
+          _id : 'rowId',
+          _clss : 'classId',
+          _rev: 'rev0',
+          _previewAttrs: ['str', 'num'],
+          str: 'string field',
+          num: 100,
+          foo: 'not changed'
+        })
+      }));
+      ss.batchWrite.onCall(0).returns(Q({}));
+
+      var json = {
+        _id : 'row-id',
+        _class : 'generic-class-id',
+        _rev : 'rev0',
+        str : 'new string',
+        num: 200
+      };
+      var expectedUpdateArgs = {
         Key : {
-          _id : { S : 'row-id'}
+          _id : { S : 'rowId'}
         },
         TableName: 'dd-generic',
         ExpressionAttributeNames: {
@@ -296,156 +350,165 @@ describe('SimpleStore-AWS', function(){
         ExpressionAttributeValues: {
           ':str' : { S: 'new string'},
           ':num' : { N : '200'},
-          ':_rev' : { S : 'A0000'},
-          ':_class' : {S : 'generic-class-id'},
+          ':_rev' : { S : 'rev100'},
+          ':_class' : {S : 'classId'},
           ':_oldRev' : { S : 'rev0'}
         },
         UpdateExpression: 'SET #rev = :_rev,#str = :str,#num = :num',
         ConditionExpression: '#class = :_class AND #rev = :_oldRev',
-        ReturnValues: 'ALL_NEW'
+        ReturnValues: 'ALL_OLD'
       };
 
-      var expectedBatchParams = {
+      var expectedBatchWriteArgs = {
         RequestItems: {
           'dd-idx-generic' : [
-            {
-             PutRequest : {
-              Item : {
-                _id : { S : 'row-id.generic-class-id.str'},
-                searchKey: {S : 'generic-class-id.str'},
-                Svalue: { S : 'new string' },
-                data: { M : {
-                  str : {S : 'new string'},
-                  num : { N : '200' }
-                }}
-              }
-             }
-           },
-           {
-            PutRequest : {
-             Item : {
-               _id : { S : 'row-id.generic-class-id.num'},
-               searchKey: {S : 'generic-class-id.num'},
-               Nvalue: { N : '200' },
-               data: { M : {
-                 str : {S : 'new string'},
-                 num : { N : '200' }
-               }}
-             }
-            }
-           }
+            { DeleteRequest: { Key: {
+              lookupKey : { S : 'classId.str=string field'},
+              id : {S : 'rowId'}
+            }}},
+            { DeleteRequest: { Key: {
+              lookupKey : { S : 'classId.num=0000000000000034'},
+              id : {S : 'rowId'}
+            }}},
+            { DeleteRequest: { Key: {
+              lookupKey : { S : 'classId.strSorted=string field'},
+              id : {S : 'rowId'}
+            }}},
+            { PutRequest: { Item: {
+              lookupKey : { S : 'classId.str=new string'},
+              id : {S : 'rowId'},
+              data : { M : { str : { S : 'new string'}, num : { N : '200'} }}
+            }}},
+            { PutRequest: { Item: {
+              lookupKey : { S : 'classId.num=0000000000000068'},
+              id : {S : 'rowId'},
+              data : { M : { str : { S : 'new string'}, num : { N : '200'} }}
+            }}},
+            { PutRequest: { Item: {
+              lookupKey : { S : 'classId.strSorted=new string'},
+              id : {S : 'rowId'},
+              sortVal : { S : '0000000000000068'}, //base 32 of 100
+              data : { M : { str : { S : 'new string'}, num : { N : '200'} }}
+            }}},
           ]
         }
       };
 
+      ddl.update('rowId', 'classId', json, {indexOptions: { strSorted : {
+          attr: 'str', sortAttr: 'num'
+       } } })
+      .done(function(){
+        assert.ok(ss.update.calledOnce, 'update called');
+        assert.deepEqual(ss.update.getCall(0).args, [expectedUpdateArgs]);
+        assert.ok(ss.batchWrite.calledOnce, 'batchWriteItem called');
+        assert.deepEqual(ss.batchWrite.getCall(0).args, [expectedBatchWriteArgs]);
 
-      var actualParams = null;
-      var actualBatchParams = null;
-      var stub = sinon.stub(ddl._dynamoDB, 'updateItem', function(params, callback){
-        actualParams = params;
-        callback(false, {
-          Attributes: {
-            _indexHint: {SS : ['str','num']}
-          }
-        });
-      });
-      var batchStub = sinon.stub(ddl._dynamoDB, 'batchWriteItem', function(params, callback){
-        actualBatchParams = params;
-        callback(false, {});
-      });
-      var genIdStub = sinon.stub(ddl, 'generateId', function(){
-        return 'A0000';
-      });
-
-      var json = {
-        _id : 'row-id',
-        _class : 'generic-class-id',
-        _rev : 'rev0',
-        str : 'new string',
-        num: 200
-      };
-
-      ddl.update('row-id', 'generic-class-id', json, true)
-      .done(function(actualData){
-        assert.ok(stub.calledOnce, 'updateItem should be called');
-        assert.ok(batchStub.calledOnce, 'batchWriteItem should be called');
-        assert.deepEqual(actualParams, expectedParams);
-        assert.deepEqual(actualBatchParams, expectedBatchParams);
-        //assert.deepEqual(actualData, expectedData);
-        stub.restore();
-        batchStub.restore();
-        genIdStub.restore();
+        restoreAll(ss);
         done();
-      }, function err(err){
-        throw err;
-        console.log(err);
-        assert.ok(false);
+      }, function(e){
+        throw e;
       });
 
     });
-  });
 
+  });
 
   describe('#delete()', function(){
-    it('should invoke deleteItem', function(done){
-      var expectedParams = {
-        RequestItems : {
-          'dd-generic' : [{
-            DeleteRequest : {
-              Key : {
-                _id : {S : 'row-id'}
-              }
-            }
-          }],
+    it('should throw an exception if item cannot be found', function(done){
+      var ss = {
+        get : sinon.stub(ddl, 'get')
+      };
+      ss.get.onCall(0).returns(Q(null));
+
+      ddl.delete('rowId', 'classId')
+      .done(function(){
+        throw 'should not be here';
+      }, function(e){
+        assert.deepEqual(ss.get.getCall(0).args, ['rowId', 'classId']);
+        assert.ok(e.indexOf('(err.get.idnotfound)')>=0);
+        restoreAll(ss);
+        done();
+      })
+    });
+
+    it('should throw an exception if class does not match', function(done){
+      var ss = {
+        get : sinon.stub(ddl, 'get')
+      };
+      ss.get.onCall(0).returns(Q({
+        _id : 'rowId',
+        _class : 'anotherClassId'
+      }));
+
+      ddl.delete('rowId', 'classId')
+      .then(function(){
+        throw 'should not be here';
+      }, function(e){
+        assert.deepEqual(ss.get.getCall(0).args, ['rowId', 'classId']);
+        assert.ok(e.indexOf('(err.get.invalidclass)')>=0);
+        restoreAll(ss);
+        done();
+      })
+    });
+
+    it('should delete item and index records', function(done){
+      var ss = {
+        get : sinon.stub(ddl, 'get'),
+        batchWrite: sinon.stub(ddl, '_awsBatchWrite')
+      };
+      ss.get.onCall(0).returns(Q({
+        _id : 'rowId',
+        _class : 'classId',
+        str: 'string field',
+        num: 100,
+        strArr : ['hello', 'test'],
+        bool: true
+      }));
+      ss.batchWrite.onCall(0).returns(Q(true));
+
+      var expectedBatchWriteArgs = {
+        RequestItems: {
+          'dd-generic' : [
+            { DeleteRequest: { Key: {
+              _id : {S : 'rowId'}
+            }}},
+          ],
           'dd-idx-generic' : [
-            { DeleteRequest : {
-              Key : {
-                _id : { S : 'row-id.generic-class-id.str'}
-              }
-            }},
-            { DeleteRequest : {
-              Key : {
-                _id : { S : 'row-id.generic-class-id.num'}
-              }
-            }}
+            { DeleteRequest: { Key: {
+              lookupKey : { S : 'classId.str=string field'},
+              id : {S : 'rowId'}
+            }}},
+            { DeleteRequest: { Key: {
+              lookupKey : { S : 'classId.num=0000000000000034'},
+              id : {S : 'rowId'}
+            }}},
+            { DeleteRequest: { Key: {
+              lookupKey : { S : 'classId.strSorted=string field'},
+              id : {S : 'rowId'}
+            }}}
           ]
         }
       };
 
-      var getItemStub = sinon.stub(ddl._dynamoDB, 'getItem', function(params, callback){
-        callback(false, {
-          Item:
-            { _id : {S : 'row-id'},
-              _class : { S : 'generic-class-id'},
-              str : { S : 'str'},
-              num : { N : '100'}
-            }
-        });
-      });
-
-      var actualParams;
-      var batchWriteStub = sinon.stub(ddl._dynamoDB, 'batchWriteItem', function(params, callback){
-        actualParams = params;
-        callback(false, {});
-      });
-
-      ddl.delete('row-id', 'generic-class-id')
-      .done(function(actualData){
-        assert.ok(getItemStub.calledOnce, 'getItem should be called');
-        assert.ok(batchWriteStub.calledOnce, 'batchWriteItem should be called');
-
-        assert.deepEqual(actualParams, expectedParams);
-        getItemStub.restore();
-        batchWriteStub.restore();
+      ddl.delete('rowId', 'classId', {indexOptions: { strSorted : {
+          attr: 'str', sortAttr: 'num'
+       } } })
+      .done(function(results){
+        assert.deepEqual(ss.get.getCall(0).args, ['rowId', 'classId']);
+        assert.deepEqual(ss.batchWrite.getCall(0).args, [expectedBatchWriteArgs]);
+        assert.equal(results, 'rowId');
+        restoreAll(ss);
         done();
-      }, function err(err){
-        throw err;
-        console.log(err);
-        assert.ok(false);
+      }, function(e){
+        throw e;
       });
 
     });
+
   });
+
+
+
 
 
 });
