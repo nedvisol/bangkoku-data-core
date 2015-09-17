@@ -6,7 +6,7 @@ var D = require('../../index.js').SimpleStore('aws');
 var ddl = new D('generic');
 
 /**** Initialize
-var D = new (require('./index.js').SimpleStore('aws'))('generic');
+var D = new (require('./index.js').SimpleStore('aws'))('good-neighbor');
 D.initializeDataStore(1,1).done(function(){});
 **/
 

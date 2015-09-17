@@ -394,14 +394,25 @@ describe('SimpleStore-AWS', function(){
         }
       };
 
+      var expectedResults = {
+        _id : 'rowId',
+        _clss : 'classId',
+        _rev: 'rev100',
+        _previewAttrs: ['str', 'num'],
+        str : 'new string',
+        num: 200,
+        foo: 'not changed'
+      };
+
       ddl.update('rowId', 'classId', json, {indexOptions: { strSorted : {
           attr: 'str', sortAttr: 'num'
        } } })
-      .done(function(){
+      .done(function(results){
         assert.ok(ss.update.calledOnce, 'update called');
         assert.deepEqual(ss.update.getCall(0).args, [expectedUpdateArgs]);
         assert.ok(ss.batchWrite.calledOnce, 'batchWriteItem called');
         assert.deepEqual(ss.batchWrite.getCall(0).args, [expectedBatchWriteArgs]);
+        assert.deepEqual(results, expectedResults, 'returns new item');
 
         restoreAll(ss);
         done();
