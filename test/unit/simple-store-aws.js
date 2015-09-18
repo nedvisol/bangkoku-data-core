@@ -586,7 +586,7 @@ describe('SimpleStore-AWS', function(){
         KeyConditionExpression: 'lookupKey = :lk AND sortVal > :sv',
         ExpressionAttributeValues: {
           ':lk' : { S : 'classId.strSorted=string value'},
-          ':sv' : { N : '500' }
+          ':sv' : { S : '00000000000000fk' }
         },
         ScanIndexForward: true,
         Select: 'ALL_PROJECTED_ATTRIBUTES'
