@@ -213,6 +213,49 @@ describe('SimpleStore-AWS', function(){
 
 
   describe('#get()', function(){
+    it('should process get with multiple Ids', function(done) {
+      var ss = {
+        batchGet : sinon.stub(ddl, '_awsBatchGet'),
+        get : sinon.stub(ddl, '_awsGet')
+      };
+      ss.batchGet.onCall(0).returns(Q({
+        Responses : {
+          'dd-generic' : [
+            ddl._Json2DynDB({ _id : 'rowId1', _class: 'classId', str : 'string value1'}),
+            ddl._Json2DynDB({ _id : 'rowId2', _class: 'classId', str : 'string value2'}),
+          ]
+        }
+      }));
+
+      ddl.get(['rowId1','rowId2'], 'classId')
+      .done(function(results){
+        assert.ok(!ss.get.calledOnce, 'Get is not called');
+        assert.ok(ss.batchGet.calledOnce, 'Batch get is called');
+        assert.deepEqual(ss.batchGet.getCall(0).args, [{
+          RequestItems: {
+            'dd-generic' : {
+              Keys: [
+                { _id : {S : 'rowId1'}},
+                { _id : {S : 'rowId2'}},
+              ],
+              ConsistentRead: true
+            }
+          }
+        }]);
+        assert.deepEqual(results, [
+          {_id: 'rowId1', _class: 'classId', str: 'string value1'},
+          {_id: 'rowId2', _class: 'classId', str: 'string value2'}
+        ]);
+
+        restoreAll(ss);
+        done();
+
+      }, function(e){
+        throw e;
+      });
+
+    });
+
     it('should invoke getItem method', function(done){
       var expected = {
         Key: {
