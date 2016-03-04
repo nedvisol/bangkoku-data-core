@@ -26,8 +26,8 @@ module.exports = function (grunt) {
         reporter: 'nyan',
         bail: true
       },
-      unit: ['test/unit/*.js'],
-      int: ['test/int/*.js']
+      unit: ['test/unit/**/*.js'],
+      int: ['test/int/**/.js']
     },
     watch: {
       gruntfile: {
