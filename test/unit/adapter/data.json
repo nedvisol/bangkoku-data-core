@@ -1,0 +1,21 @@
+["batchWriteItem", {
+  "RequestItems": {
+    "foo": [{
+      "DeleteRequest": {
+        "Key": {
+          "_id": {
+            "S": "item-id1"
+          }
+        }
+      }
+    }, {
+      "DeleteRequest": {
+        "Key": {
+          "_id": {
+            "S": "item-id2"
+          }
+        }
+      }
+    }]
+  }
+}]
