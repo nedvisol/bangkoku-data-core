@@ -1,21 +1,8 @@
-["batchWriteItem", {
-  "RequestItems": {
-    "foo": [{
-      "DeleteRequest": {
-        "Key": {
-          "_id": {
-            "S": "item-id1"
-          }
-        }
-      }
-    }, {
-      "DeleteRequest": {
-        "Key": {
-          "_id": {
-            "S": "item-id2"
-          }
-        }
-      }
-    }]
-  }
+[{
+  "str": "foo",
+  "num": 200,
+  "_id": "55a70hsoxghlwyrq39tvmut5g@partitionid-i",
+  "_class": "classid",
+  "_rev": "9gdqlx6xsidls89m4njkrtmvg",
+  "_createdTime": 1457218196232
 }]

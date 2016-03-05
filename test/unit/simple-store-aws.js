@@ -27,7 +27,7 @@ describe('SimpleStore-AWS', function(){
   describe('#generateId()', function() {
     it('should generate string representation of UUID v4', function(){
       var id = ddl.generateId();
-      console.log('Generate ID: '+id);
+      //console.log('Generate ID: '+id);
       assert.ok(id.length > 20);
     });
   });
@@ -61,7 +61,7 @@ describe('SimpleStore-AWS', function(){
 
       var actual = ddl._Json2DynDB(json);
 
-      //console.log(util.inspect(actual, true,  null));
+        //console.log(util.inspect(actual, true,  null));
       assert.deepEqual(expected, actual);
     });
   });
@@ -320,7 +320,7 @@ describe('SimpleStore-AWS', function(){
         done();
       }, function err(err){
         throw err;
-        console.log(err);
+        //console.log(err);
         assert.ok(false);
       });
 
