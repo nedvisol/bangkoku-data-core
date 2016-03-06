@@ -17,6 +17,14 @@ function restoreAll(stubs) {
 }
 
 describe('AWS Adapter', function(){
+  describe('#normalizeKeyName', ()=>{
+    it('should remove non-alphanumeric chars', ()=>{
+      var collection = awsAdapter.DB('foo');
+      assert.equal('foobar', collection.normalizeKeyName('foo bar'));
+      assert.equal('foobar', collection.normalizeKeyName('foo bar ! @#$%^&*()[]/'));
+    });
+  });
+
   describe('#create', function(){
     it('should invoke DynamoDB PutRequest', function(done){
 
@@ -129,8 +137,31 @@ describe('AWS Adapter', function(){
           done();
       });
     });
-
   });
+
+  describe('#update()', ()=>{
+    it('should invoke updateItem', (done)=>{
+
+      var stub = sinon.stub(awsAdapter._ext, 'invokeDb');
+      stub.onCall(0).returns(Q(true));
+
+      awsAdapter.DB('foo').update({hash: 'id', range: 'range'}, {str: 'foo', num: 100, 'key name' : 'val'})
+      .done(function(data) {
+          //console.log(JSON.stringify(stub.getCall(0).args));
+          //console.log(JSON.stringify(data));
+          assert.deepEqual(stub.getCall(0).args,
+            ["updateItem",{"Key":{"hash":{"S":"id"},"range":{"S":"range"}},"TableName":"foo","UpdateExpression":"#str = :str, #num = :num, #keyname = :keyname"
+            ,"ExpressionAttributeNames":{"#str":"str","#num":"num","#keyname":"key name"}
+            ,"ExpressionAttributeValues":{":str":{"S":"foo"},":num":{"N":"100"},":keyname":{"S":"val"}}}]
+          );
+          assert.equal(data, true);
+          stub.restore();
+          done();
+      });
+
+    });
+  });
+
 
 
 });

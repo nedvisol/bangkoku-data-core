@@ -32,6 +32,8 @@ describe('Dynamic Data', () => {
   });
 
   describe('Context', () => {
+
+
     describe('#getItemId()', ()=>{
       it('should return combined id and partition id', ()=>{
         var ctx = DD.getContext('partitionid');
@@ -63,7 +65,7 @@ describe('Dynamic Data', () => {
         ctx.get('itemid').promise()
         .done((results) => {
           //console.log(JSON.stringify(results));
-          assert.deepEqual(mockAdapter.collection.getCall(0).args, [ 'dd-colection' ]);
+          assert.deepEqual(mockAdapter.collection.getCall(0).args, [ 'dd-collection' ]);
           assert.deepEqual(mockCollection.read.getCall(0).args, [{"_id":"itemid@partitionid-i"}]);
           assert.deepEqual(results, {"str":"foo","num":100});
 
@@ -107,17 +109,28 @@ describe('Dynamic Data', () => {
           mockCollection.create.onCall(1).returns(Q('indexitemid'));
 
           var ctx = DD.getContext('partitionid');
+
+          var genIdStub = sinon.stub(ctx, 'generateUuid', ()=>{ return 'id'});
+          var dateStub = sinon.stub(Date, 'now', ()=>{ return '100'});
+
           ctx.create({str: 'foo', num: 200})
           .as('classid').promise()
           .done( (results)=>{
-            console.log(JSON.stringify(mockCollection.create.getCall(0).args));
+            //console.log(JSON.stringify(mockCollection.create.getCall(0).args));
             //console.log(JSON.stringify(mockCollection.create.getCall(1).args));
-            assert.deepEqual(mockAdapter.collection.getCall(0).args, [ 'dd-colection' ]);
-            assert.deepEqual(mockCollection.create.getCall(0).args, [{"_id":"itemid@partitionid-i"}]);
-            assert.deepEqual(mockAdapter.collection.getCall(1).args, [ 'index-colection' ]);
-            assert.deepEqual(mockCollection.create.getCall(1).args, [{"_id":"itemid@partitionid-i"}]);
-            assert.eqaul(results, true);
+            assert.deepEqual(mockAdapter.collection.getCall(0).args, [ 'dd-collection' ]);
+            assert.deepEqual(mockCollection.create.getCall(0).args,
+              [{"str":"foo","num":200,"_id":"id@partitionid-i","_class":"classid","_rev":"id","_createdTime":"100"}]
+            );
+            assert.deepEqual(mockAdapter.collection.getCall(1).args, [ 'index-collection' ]);
+            assert.deepEqual(mockCollection.create.getCall(1).args,
+              [{"lookupKey":"classid@partitionid/c","id":"id","sortVal":"100"}]
+            );
+            assert.equal(results, true);
 
+
+            genIdStub.restore();
+            dateStub.restore();
             mockAdapter.collection.reset();
             mockCollection.read.reset();
             mockCollection.create.reset();

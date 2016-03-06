@@ -1,8 +1,28 @@
-[{
-  "str": "foo",
-  "num": 200,
-  "_id": "55a70hsoxghlwyrq39tvmut5g@partitionid-i",
-  "_class": "classid",
-  "_rev": "9gdqlx6xsidls89m4njkrtmvg",
-  "_createdTime": 1457218196232
+["updateItem", {
+  "Key": {
+    "hash": {
+      "S": "id"
+    },
+    "range": {
+      "S": "range"
+    }
+  },
+  "TableName": "foo",
+  "UpdateExpression": "#str = :str, #num = :num, #keyname = :keyname",
+  "ExpressionAttributeNames": {
+    "#str": "str",
+    "#num": "num",
+    "#keyname": "key name"
+  },
+  "ExpressionAttributeValues": {
+    ":str": {
+      "S": "foo"
+    },
+    ":num": {
+      "N": "100"
+    },
+    ":keyname": {
+      "S": "val"
+    }
+  }
 }]
