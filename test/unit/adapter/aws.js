@@ -98,6 +98,24 @@ describe('AWS Adapter', function(){
           done();
       });
     });
+
+    it('should return null if record is not found', (done)=>{
+      var stub = sinon.stub(awsAdapter._ext, 'invokeDb');
+      stub.onCall(0).returns(Q({}));
+
+      awsAdapter.DB('foo').read({_id : 'item-id'})
+      .done(function(data) {
+          //console.log(JSON.stringify(stub.getCall(0).args));
+          //console.log(JSON.stringify(data));
+          assert.deepEqual(stub.getCall(0).args,
+            ["get",{"Key":{"_id":{"S":"item-id"}},"TableName":"foo"}]
+          );
+          assert.deepEqual(data, null);
+          stub.restore();
+          done();
+      });
+    }); //end it('should return null if record is not found', (done)=>{});
+
   });
 
   describe('#delete', function(){
