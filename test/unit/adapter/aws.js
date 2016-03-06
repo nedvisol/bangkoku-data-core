@@ -35,7 +35,7 @@ describe('AWS Adapter', function(){
       .done(function(id) {
           //console.log(JSON.stringify(stub.getCall(0).args));
           assert.deepEqual(stub.getCall(0).args,
-            ["put",{"Item":{"str":{"S":"bar"},"num":{"N":"100"},"bool":{"BOOL":true},"null":{"NULL":true}},"TableName":"foo"}]
+            ["putItem",{"Item":{"str":{"S":"bar"},"num":{"N":"100"},"bool":{"BOOL":true},"null":{"NULL":true}},"TableName":"foo"}]
           );
           stub.restore();
           done();
@@ -51,7 +51,7 @@ describe('AWS Adapter', function(){
       .done(function(id) {
           //console.log(JSON.stringify(stub.getCall(0).args));
           assert.deepEqual(stub.getCall(0).args,
-            ["put",{"Item":{"str":{"S":"bar"},"num":{"N":"100"},"bool":{"BOOL":true},"null":{"NULL":true}},"TableName":"foo","ConditionExpression":"attribute_not_exists(str)"}]
+            ["putItem",{"Item":{"str":{"S":"bar"},"num":{"N":"100"},"bool":{"BOOL":true},"null":{"NULL":true}},"TableName":"foo","ConditionExpression":"attribute_not_exists(str)"}]
           );
           stub.restore();
           done();

@@ -11,7 +11,7 @@ var Q = require('Q'),
   _ = require('underscore');
 
 var mockAdapter = {
-  collection: sinon.stub()
+  DB: sinon.stub()
 };
 var mockCollection = {
   read:  sinon.stub(),
@@ -24,7 +24,7 @@ var mockCollection = {
 var dateNowStub = sinon.stub(Date, 'now');
 
 function resetStubs() {
-  mockAdapter.collection.reset();
+  mockAdapter.DB.reset();
   mockCollection.read.reset();
   mockCollection.create.reset();
   mockCollection.update.reset();
@@ -73,7 +73,7 @@ describe('Dynamic Data', () => {
         resetStubs();
         DD.useAdapter(mockAdapter);
 
-        mockAdapter.collection.onCall(0).returns(mockCollection);
+        mockAdapter.DB.onCall(0).returns(mockCollection);
         mockCollection.read.onCall(0).returns(Q({str: 'foo', num: 100, _id : 'itemid@paritionid-i'
           , _rev : 'rev', _txn: 'txn', _class: 'classid'}));
 
@@ -82,11 +82,11 @@ describe('Dynamic Data', () => {
         ctx.get('itemid').promise()
         .done((results) => {
           //console.log(JSON.stringify(results));
-          assert.deepEqual(mockAdapter.collection.getCall(0).args, [ 'dd-collection' ]);
+          assert.deepEqual(mockAdapter.DB.getCall(0).args, [ 'dd-collection' ]);
           assert.deepEqual(mockCollection.read.getCall(0).args, [{"_id":"itemid@partitionid-i", "_range" : "0"}]);
           assert.deepEqual(results, {"str":"foo","num":100, _id : 'itemid', _rev : 'rev', _class : 'classid'});
 
-          mockAdapter.collection.reset();
+          mockAdapter.DB.reset();
           mockCollection.read.reset();
           done();
         });
@@ -99,8 +99,8 @@ describe('Dynamic Data', () => {
         resetStubs();
         DD.useAdapter(mockAdapter);
 
-        mockAdapter.collection.onCall(0).returns(mockCollection);
-        mockAdapter.collection.onCall(1).returns(mockCollection);
+        mockAdapter.DB.onCall(0).returns(mockCollection);
+        mockAdapter.DB.onCall(1).returns(mockCollection);
         mockCollection.create.onCall(0).returns(Q('itemid'));
 
         var ctx = DD.getContext('partitionid');
@@ -120,8 +120,8 @@ describe('Dynamic Data', () => {
 
         resetStubs();
         DD.useAdapter(mockAdapter);
-        mockAdapter.collection.onCall(0).returns(mockCollection);
-        mockAdapter.collection.onCall(1).returns(mockCollection);
+        mockAdapter.DB.onCall(0).returns(mockCollection);
+        mockAdapter.DB.onCall(1).returns(mockCollection);
         mockCollection.create.onCall(0).returns(Q('itemid'));
         mockCollection.create.onCall(1).returns(Q('indexitemid'));
 
@@ -143,8 +143,8 @@ describe('Dynamic Data', () => {
 
         resetStubs();
         DD.useAdapter(mockAdapter);
-        mockAdapter.collection.onCall(0).returns(mockCollection);
-        mockAdapter.collection.onCall(1).returns(mockCollection);
+        mockAdapter.DB.onCall(0).returns(mockCollection);
+        mockAdapter.DB.onCall(1).returns(mockCollection);
         mockCollection.create.onCall(0).returns(Q('itemid'));
         mockCollection.create.onCall(1).returns(Q('indexitemid'));
         dateNowStub.returns(100);
@@ -158,13 +158,13 @@ describe('Dynamic Data', () => {
         .done( (results)=>{
           //console.log(JSON.stringify(mockCollection.create.getCall(0).args));
           //console.log(JSON.stringify(mockCollection.create.getCall(1).args));
-          assert.deepEqual(mockAdapter.collection.getCall(0).args, [ 'dd-collection' ]);
+          assert.deepEqual(mockAdapter.DB.getCall(0).args, [ 'dd-collection' ]);
           assert.deepEqual(mockCollection.create.getCall(0).args,
             [{"str":"foo","num":200,"_id":"id@partitionid-i", "_range" : "0","_class":"classid","_rev":"id","_createdTime":"100"}]
           );
-          assert.deepEqual(mockAdapter.collection.getCall(1).args, [ 'index-collection' ]);
+          assert.deepEqual(mockAdapter.DB.getCall(1).args, [ 'index-collection' ]);
           assert.deepEqual(mockCollection.create.getCall(1).args,
-            [[{"lookupKey":"classid@partitionid/c","id":"id","sortVal":"100"}]]
+            [[{"lookupKey":"classid@partitionid/c","id":"id@partitionid-i","sortVal":"0000000000000034"}]]
           );
           assert.equal(results, 'id');
           done();
@@ -177,8 +177,8 @@ describe('Dynamic Data', () => {
 
         resetStubs();
         DD.useAdapter(mockAdapter);
-        mockAdapter.collection.onCall(0).returns(mockCollection);
-        mockAdapter.collection.onCall(1).returns(mockCollection);
+        mockAdapter.DB.onCall(0).returns(mockCollection);
+        mockAdapter.DB.onCall(1).returns(mockCollection);
         mockCollection.create.onCall(0).returns(Q('itemid'));
         mockCollection.create.onCall(1).returns(Q('indexitemid1'));
         mockCollection.create.onCall(2).returns(Q('indexitemid2'));
@@ -198,15 +198,15 @@ describe('Dynamic Data', () => {
         .promise()
         .done( (results)=>{
           //console.log(JSON.stringify(mockCollection.create.getCall(1).args));
-          assert.deepEqual(mockAdapter.collection.getCall(0).args, [ 'dd-collection' ]);
+          assert.deepEqual(mockAdapter.DB.getCall(0).args, [ 'dd-collection' ]);
           assert.deepEqual(mockCollection.create.getCall(0).args,
             [{"str":"foo","num":200,"_id":"id@partitionid-i", "_range" : "0","_class":"classid","_rev":"id","_createdTime":"100"}]
           );
-          assert.deepEqual(mockAdapter.collection.getCall(1).args, [ 'index-collection' ]);
+          assert.deepEqual(mockAdapter.DB.getCall(1).args, [ 'index-collection' ]);
           assert.deepEqual(mockCollection.create.getCall(1).args,
-            [[{"lookupKey":"classid@partitionid/c","id":"id","sortVal":"100"}
-            ,{"lookupKey":"str.classid@partitionid=[\"foo\"]","id":"id","sortVal":"100"}
-            ,{"lookupKey":"strnum.classid@partitionid=[\"foo\",200]","id":"id","sortVal":"100"}]]
+            [[{"lookupKey":"classid@partitionid/c","id":"id@partitionid-i","sortVal":"0000000000000034"}
+            ,{"lookupKey":"str.classid@partitionid=[\"foo\"]","id":"id@partitionid-i","sortVal":"100"}
+            ,{"lookupKey":"strnum.classid@partitionid=[\"foo\",200]","id":"id@partitionid-i","sortVal":"100"}]]
           );
           assert.equal(results, 'id');
           done();
@@ -221,7 +221,7 @@ describe('Dynamic Data', () => {
         resetStubs();
         DD.useAdapter(mockAdapter);
 
-        mockAdapter.collection.returns(mockCollection);
+        mockAdapter.DB.returns(mockCollection);
 
         var ctx = DD.getContext('partitionid');
         ctx.update({_rev: 'rev', _class: 200})
@@ -258,7 +258,7 @@ describe('Dynamic Data', () => {
         resetStubs();
         DD.useAdapter(mockAdapter);
 
-        mockAdapter.collection.returns(mockCollection);
+        mockAdapter.DB.returns(mockCollection);
 
         var ctx = DD.getContext('partitionid');
         ctx.update({_id: 'id', _rev: 'rev', _class:'class', _txn: 'txn id', _foo: 'foo'})
@@ -277,7 +277,7 @@ describe('Dynamic Data', () => {
         resetStubs();
         DD.useAdapter(mockAdapter);
 
-        mockAdapter.collection.returns(mockCollection);
+        mockAdapter.DB.returns(mockCollection);
         mockCollection.read.onCall(0).returns(Q(null));
 
         var ctx = DD.getContext('partitionid');
@@ -297,7 +297,7 @@ describe('Dynamic Data', () => {
         resetStubs();
         DD.useAdapter(mockAdapter);
 
-        mockAdapter.collection.returns(mockCollection);
+        mockAdapter.DB.returns(mockCollection);
         mockCollection.read.onCall(0).returns(Q({_id: 'id1', _rev: 'rev2', _class: 'class', str: 'foo', num: 100}));
 
         var ctx = DD.getContext('partitionid');
@@ -316,7 +316,7 @@ describe('Dynamic Data', () => {
         resetStubs();
         DD.useAdapter(mockAdapter);
 
-        mockAdapter.collection.returns(mockCollection);
+        mockAdapter.DB.returns(mockCollection);
         mockCollection.read.onCall(0).returns(Q({_id: 'id1', _rev: 'rev1', _class: 'class', str: 'foo', num: 100}));
 
         var ctx = DD.getContext('partitionid');
@@ -336,7 +336,7 @@ describe('Dynamic Data', () => {
         resetStubs();
         DD.useAdapter(mockAdapter);
 
-        mockAdapter.collection.returns(mockCollection);
+        mockAdapter.DB.returns(mockCollection);
         mockCollection.read.onCall(0).returns(Q({_id: 'id1', _rev: 'rev1', _class: 'class', str: 'foo', num: 100}));
         mockCollection.update.onCall(0).returns(Q(true));
         mockCollection.withCondition.onCall(0).returns(mockCollection);
@@ -364,7 +364,7 @@ describe('Dynamic Data', () => {
         resetStubs();
         DD.useAdapter(mockAdapter);
 
-        mockAdapter.collection.returns(mockCollection);
+        mockAdapter.DB.returns(mockCollection);
         mockCollection.read.onCall(0).returns(Q({_id: 'id1', _rev: 'rev1', _class: 'class', str: 'foo', num: 100}));
         mockCollection.update.onCall(0).returns(Q.reject({
           errCode: 'ConditionalCheckFailedException'
