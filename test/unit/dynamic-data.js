@@ -54,11 +54,12 @@ describe('Dynamic Data', () => {
     });
 
     describe('#get()', ()=>{
-      it('should return a promise with execute read op',(done)=>{
+      it('should return a promise with execute read op, data only include id and rev',(done)=>{
         DD.useAdapter(mockAdapter);
 
         mockAdapter.collection.onCall(0).returns(mockCollection);
-        mockCollection.read.onCall(0).returns(Q({str: 'foo', num: 100}));
+        mockCollection.read.onCall(0).returns(Q({str: 'foo', num: 100, _id : 'itemid@paritionid-i'
+          , _rev : 'rev', _txn: 'txn', _class: 'classid'}));
 
 
         var ctx = DD.getContext('partitionid');
@@ -67,7 +68,7 @@ describe('Dynamic Data', () => {
           //console.log(JSON.stringify(results));
           assert.deepEqual(mockAdapter.collection.getCall(0).args, [ 'dd-collection' ]);
           assert.deepEqual(mockCollection.read.getCall(0).args, [{"_id":"itemid@partitionid-i"}]);
-          assert.deepEqual(results, {"str":"foo","num":100});
+          assert.deepEqual(results, {"str":"foo","num":100, _id : 'itemid', _rev : 'rev', _class : 'classid'});
 
           mockAdapter.collection.reset();
           mockCollection.read.reset();
@@ -76,6 +77,31 @@ describe('Dynamic Data', () => {
       });
 
       describe('#create', ()=>{
+        it('should return rejected promise if json contains _attr', (done)=>{
+
+          DD.useAdapter(mockAdapter);
+          mockAdapter.collection.reset();
+          mockCollection.create.reset();
+
+          mockAdapter.collection.onCall(0).returns(mockCollection);
+          mockAdapter.collection.onCall(1).returns(mockCollection);
+          mockCollection.create.onCall(0).returns(Q('itemid'));
+
+          var ctx = DD.getContext('partitionid');
+          ctx.create({_id: 'foo', _class: 200})
+          .as('classid')
+          .promise()
+          .done( (results)=>{
+            assert.fail('should not be here');
+            //done();
+          },(err)=>{
+            assert.equal(err, 'invalid.parameters');
+            mockAdapter.collection.reset();
+            mockCollection.create.reset();
+            done();
+          });
+        });
+
         it('should return failed promise if class is not provided', (done)=>{
           DD.useAdapter(mockAdapter);
           mockAdapter.collection.onCall(0).returns(mockCollection);
@@ -96,11 +122,13 @@ describe('Dynamic Data', () => {
             done();
           },(err)=>{
             assert.equal(err, 'missing.parameters');
+            mockAdapter.collection.reset();
+            mockCollection.create.reset();
             done();
           });
 
         });
-        it('should insert item and class index', (done)=>{
+        it('should insert item and class index and returns Q(id)', (done)=>{
 
           DD.useAdapter(mockAdapter);
           mockAdapter.collection.onCall(0).returns(mockCollection);
@@ -124,9 +152,9 @@ describe('Dynamic Data', () => {
             );
             assert.deepEqual(mockAdapter.collection.getCall(1).args, [ 'index-collection' ]);
             assert.deepEqual(mockCollection.create.getCall(1).args,
-              [{"lookupKey":"classid@partitionid/c","id":"id","sortVal":"100"}]
+              [[{"lookupKey":"classid@partitionid/c","id":"id","sortVal":"100"}]]
             );
-            assert.equal(results, true);
+            assert.equal(results, 'id');
 
 
             genIdStub.restore();
@@ -142,7 +170,52 @@ describe('Dynamic Data', () => {
         });
         it('should insert index items if index options are provided', (done)=>{
 
-          done();
+          DD.useAdapter(mockAdapter);
+          mockAdapter.collection.onCall(0).returns(mockCollection);
+          mockAdapter.collection.onCall(1).returns(mockCollection);
+          mockCollection.create.onCall(0).returns(Q('itemid'));
+          mockCollection.create.onCall(1).returns(Q('indexitemid1'));
+          mockCollection.create.onCall(2).returns(Q('indexitemid2'));
+          mockCollection.create.onCall(3).returns(Q('indexitemid3'));
+
+          var ctx = DD.getContext('partitionid');
+
+          var genIdStub = sinon.stub(ctx, 'generateUuid', ()=>{ return 'id'});
+          var dateStub = sinon.stub(Date, 'now', ()=>{ return '100'});
+
+          ctx.create({str: 'foo', num: 200})
+          .as('classid')
+          .index([
+            {indexName: 'str', attrs: ['str']},
+            {indexName: 'strnum', attrs: ['str','num']}
+          ])
+          .promise()
+          .done( (results)=>{
+            //console.log(JSON.stringify(mockCollection.create.getCall(1).args));
+            assert.deepEqual(mockAdapter.collection.getCall(0).args, [ 'dd-collection' ]);
+            assert.deepEqual(mockCollection.create.getCall(0).args,
+              [{"str":"foo","num":200,"_id":"id@partitionid-i","_class":"classid","_rev":"id","_createdTime":"100"}]
+            );
+            assert.deepEqual(mockAdapter.collection.getCall(1).args, [ 'index-collection' ]);
+            assert.deepEqual(mockCollection.create.getCall(1).args,
+              [[{"lookupKey":"classid@partitionid/c","id":"id","sortVal":"100"}
+              ,{"lookupKey":"str.classid@partitionid=[\"foo\"]","id":"id","sortVal":"100"}
+              ,{"lookupKey":"strnum.classid@partitionid=[\"foo\",200]","id":"id","sortVal":"100"}]]
+            );
+            assert.equal(results, 'id');
+
+
+            genIdStub.restore();
+            dateStub.restore();
+            mockAdapter.collection.reset();
+            mockCollection.read.reset();
+            mockCollection.create.reset();
+            done();
+          },(err)=>{
+            assert.fail(err);
+          });
+
+
         });
       });
     });
