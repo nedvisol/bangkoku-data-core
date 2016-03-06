@@ -17,7 +17,8 @@ var mockCollection = {
   read:  sinon.stub(),
   create: sinon.stub(),
   update: sinon.stub(),
-  delete: sinon.stub()
+  delete: sinon.stub(),
+  withCondition: sinon.stub()
 }
 
 var dateNowStub = sinon.stub(Date, 'now');
@@ -28,6 +29,7 @@ function resetStubs() {
   mockCollection.create.reset();
   mockCollection.update.reset();
   mockCollection.delete.reset();
+  mockCollection.withCondition.reset();
   dateNowStub.reset();
 }
 
@@ -81,7 +83,7 @@ describe('Dynamic Data', () => {
         .done((results) => {
           //console.log(JSON.stringify(results));
           assert.deepEqual(mockAdapter.collection.getCall(0).args, [ 'dd-collection' ]);
-          assert.deepEqual(mockCollection.read.getCall(0).args, [{"_id":"itemid@partitionid-i"}]);
+          assert.deepEqual(mockCollection.read.getCall(0).args, [{"_id":"itemid@partitionid-i", "_range" : "0"}]);
           assert.deepEqual(results, {"str":"foo","num":100, _id : 'itemid', _rev : 'rev', _class : 'classid'});
 
           mockAdapter.collection.reset();
@@ -158,7 +160,7 @@ describe('Dynamic Data', () => {
           //console.log(JSON.stringify(mockCollection.create.getCall(1).args));
           assert.deepEqual(mockAdapter.collection.getCall(0).args, [ 'dd-collection' ]);
           assert.deepEqual(mockCollection.create.getCall(0).args,
-            [{"str":"foo","num":200,"_id":"id@partitionid-i","_class":"classid","_rev":"id","_createdTime":"100"}]
+            [{"str":"foo","num":200,"_id":"id@partitionid-i", "_range" : "0","_class":"classid","_rev":"id","_createdTime":"100"}]
           );
           assert.deepEqual(mockAdapter.collection.getCall(1).args, [ 'index-collection' ]);
           assert.deepEqual(mockCollection.create.getCall(1).args,
@@ -198,7 +200,7 @@ describe('Dynamic Data', () => {
           //console.log(JSON.stringify(mockCollection.create.getCall(1).args));
           assert.deepEqual(mockAdapter.collection.getCall(0).args, [ 'dd-collection' ]);
           assert.deepEqual(mockCollection.create.getCall(0).args,
-            [{"str":"foo","num":200,"_id":"id@partitionid-i","_class":"classid","_rev":"id","_createdTime":"100"}]
+            [{"str":"foo","num":200,"_id":"id@partitionid-i", "_range" : "0","_class":"classid","_rev":"id","_createdTime":"100"}]
           );
           assert.deepEqual(mockAdapter.collection.getCall(1).args, [ 'index-collection' ]);
           assert.deepEqual(mockCollection.create.getCall(1).args,
@@ -337,23 +339,54 @@ describe('Dynamic Data', () => {
         mockAdapter.collection.returns(mockCollection);
         mockCollection.read.onCall(0).returns(Q({_id: 'id1', _rev: 'rev1', _class: 'class', str: 'foo', num: 100}));
         mockCollection.update.onCall(0).returns(Q(true));
+        mockCollection.withCondition.onCall(0).returns(mockCollection);
 
         var ctx = DD.getContext('partitionid');
-        ctx.update({_id: 'id1', _rev: 'rev1', _class:'class', str: 'foo', num: 100})
+        ctx.update({_id: 'id1', _rev: 'rev1', _class:'class', str: 'bar', num: 200})
         .promise()
         .done( (results)=>{
-          assert.fail('should not be here');
-
-          assert.deepEqual(mockCollection.update.getCall(0).args,[]);
-
+          //assert.fail('should not be here');
+          //console.log(JSON.stringify(mockCollection.withCondition.getCall(0).args));
+          assert.deepEqual(mockCollection.update.getCall(0).args,
+            [{"_id":"id1@partitionid-i","_range":"0"},{"str":"bar","num":200}]
+          );
+          assert.deepEqual(mockCollection.withCondition.getCall(0).args,
+            [{"expr":"#oldrev = :oldrev","attrs":{"#oldrev":"_rev"},"values":{":oldrev":"rev1"}}]
+          );
           done();
         },(err)=>{
+          console.log(err);
           assert.fail('should not be here');
         });
       }); //end it('should add parition id to itemId and make update call', (done)=>{});
 
       it('should reject if _rev = oldRev check fails', (done)=>{
-        done();
+        resetStubs();
+        DD.useAdapter(mockAdapter);
+
+        mockAdapter.collection.returns(mockCollection);
+        mockCollection.read.onCall(0).returns(Q({_id: 'id1', _rev: 'rev1', _class: 'class', str: 'foo', num: 100}));
+        mockCollection.update.onCall(0).returns(Q.reject({
+          errCode: 'ConditionalCheckFailedException'
+        }));
+        mockCollection.withCondition.onCall(0).returns(mockCollection);
+
+        var ctx = DD.getContext('partitionid');
+        ctx.update({_id: 'id1', _rev: 'rev1', _class:'class', str: 'bar', num: 200})
+        .promise()
+        .done( (results)=>{
+          assert.fail('should not be here');
+        },(err)=>{
+          //console.log(JSON.stringify(mockCollection.withCondition.getCall(0).args));
+          assert.deepEqual(mockCollection.update.getCall(0).args,
+            [{"_id":"id1@partitionid-i","_range":"0"},{"str":"bar","num":200}]
+          );
+          assert.deepEqual(mockCollection.withCondition.getCall(0).args,
+            [{"expr":"#oldrev = :oldrev","attrs":{"#oldrev":"_rev"},"values":{":oldrev":"rev1"}}]
+          );
+          assert.equal(err, 'optimisti-lock.failed');
+          done();
+        });
 
       }); //end it('should reject if _rev = oldRev check fails', (done)=>{});
 

@@ -1,15 +1,9 @@
-[
-  [{
-    "lookupKey": "classid@partitionid/c",
-    "id": "id",
-    "sortVal": "100"
-  }, {
-    "lookupKey": "str.classid@partitionid=[\"foo\"]",
-    "id": "id",
-    "sortVal": "100"
-  }, {
-    "lookupKey": "strnum.classid@partitionid=[\"foo\",200]",
-    "id": "id",
-    "sortVal": "100"
-  }]
-]
+[{
+  "expr": "#oldrev = :oldrev",
+  "attrs": {
+    "#oldrev": "_rev"
+  },
+  "values": {
+    ":oldrev": "rev1"
+  }
+}]

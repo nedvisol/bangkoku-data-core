@@ -91,7 +91,7 @@ describe('AWS Adapter', function(){
           //console.log(JSON.stringify(stub.getCall(0).args));
           //console.log(JSON.stringify(data));
           assert.deepEqual(stub.getCall(0).args,
-            ["get",{"Key":{"_id":{"S":"item-id"}},"TableName":"foo"}]
+            ["getItem",{"Key":{"_id":{"S":"item-id"}},"TableName":"foo"}]
           );
           assert.deepEqual(data, {"str":"bar","num":100,"bool":true,"null":null});
           stub.restore();
@@ -108,7 +108,7 @@ describe('AWS Adapter', function(){
           //console.log(JSON.stringify(stub.getCall(0).args));
           //console.log(JSON.stringify(data));
           assert.deepEqual(stub.getCall(0).args,
-            ["get",{"Key":{"_id":{"S":"item-id"}},"TableName":"foo"}]
+            ["getItem",{"Key":{"_id":{"S":"item-id"}},"TableName":"foo"}]
           );
           assert.deepEqual(data, null);
           stub.restore();
@@ -168,16 +168,42 @@ describe('AWS Adapter', function(){
           //console.log(JSON.stringify(stub.getCall(0).args));
           //console.log(JSON.stringify(data));
           assert.deepEqual(stub.getCall(0).args,
-            ["updateItem",{"Key":{"hash":{"S":"id"},"range":{"S":"range"}},"TableName":"foo","UpdateExpression":"#str = :str, #num = :num, #keyname = :keyname"
+            ["updateItem",{"Key":{"hash":{"S":"id"},"range":{"S":"range"}},"TableName":"foo","UpdateExpression":"#str = :UPDstr, #num = :UPDnum, #keyname = :UPDkeyname"
             ,"ExpressionAttributeNames":{"#str":"str","#num":"num","#keyname":"key name"}
-            ,"ExpressionAttributeValues":{":str":{"S":"foo"},":num":{"N":"100"},":keyname":{"S":"val"}}}]
+            ,"ExpressionAttributeValues":{":UPDstr":{"S":"foo"},":UPDnum":{"N":"100"},":UPDkeyname":{"S":"val"}}}]
           );
           assert.equal(data, true);
           stub.restore();
           done();
       });
+    }); //end it('should invoke updateItem', (done)=>{
 
-    });
+    it('should include check expression if provided', (done)=>{
+      var stub = sinon.stub(awsAdapter._ext, 'invokeDb');
+      stub.onCall(0).returns(Q(true));
+
+      awsAdapter.DB('foo')
+      .withCondition({
+        expr: '#oldid = :oldid',
+        attrs: { '#oldid' : '_id'},
+        values: {':oldid' : 'oldidvalue'}
+      })
+      .update({hash: 'id', range: 'range'}, {str: 'foo', num: 100, 'key name' : 'val'})
+      .done(function(data) {
+          //console.log(JSON.stringify(stub.getCall(0).args));
+          //console.log(JSON.stringify(data));
+          assert.deepEqual(stub.getCall(0).args,
+            ["updateItem",{"Key":{"hash":{"S":"id"},"range":{"S":"range"}}
+            ,"TableName":"foo","UpdateExpression":"#str = :UPDstr, #num = :UPDnum, #keyname = :UPDkeyname","ExpressionAttributeNames":{"#str":"str","#num":"num","#keyname":"key name","#oldid":"_id"}
+            ,"ExpressionAttributeValues":{":UPDstr":{"S":"foo"},":UPDnum":{"N":"100"},":UPDkeyname":{"S":"val"},":oldid":{"S":"oldidvalue"}},"ConditionExpression":"#oldid = :oldid"}]
+          );
+          assert.equal(data, true);
+          stub.restore();
+          done();
+      });
+    }); //it('should include check expression if provided', (done)=>{});
+
+
   });
 
 
