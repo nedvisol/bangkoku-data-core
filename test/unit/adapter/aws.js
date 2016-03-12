@@ -168,7 +168,7 @@ describe('AWS Adapter', function(){
           //console.log(JSON.stringify(stub.getCall(0).args));
           //console.log(JSON.stringify(data));
           assert.deepEqual(stub.getCall(0).args,
-            ["updateItem",{"Key":{"hash":{"S":"id"},"range":{"S":"range"}},"TableName":"foo","UpdateExpression":"#str = :UPDstr, #num = :UPDnum, #keyname = :UPDkeyname"
+            ["updateItem",{"Key":{"hash":{"S":"id"},"range":{"S":"range"}},"TableName":"foo","UpdateExpression":"SET #str = :UPDstr, #num = :UPDnum, #keyname = :UPDkeyname"
             ,"ExpressionAttributeNames":{"#str":"str","#num":"num","#keyname":"key name"}
             ,"ExpressionAttributeValues":{":UPDstr":{"S":"foo"},":UPDnum":{"N":"100"},":UPDkeyname":{"S":"val"}}}]
           );
@@ -194,7 +194,7 @@ describe('AWS Adapter', function(){
           //console.log(JSON.stringify(data));
           assert.deepEqual(stub.getCall(0).args,
             ["updateItem",{"Key":{"hash":{"S":"id"},"range":{"S":"range"}}
-            ,"TableName":"foo","UpdateExpression":"#str = :UPDstr, #num = :UPDnum, #keyname = :UPDkeyname","ExpressionAttributeNames":{"#str":"str","#num":"num","#keyname":"key name","#oldid":"_id"}
+            ,"TableName":"foo","UpdateExpression":"SET #str = :UPDstr, #num = :UPDnum, #keyname = :UPDkeyname","ExpressionAttributeNames":{"#str":"str","#num":"num","#keyname":"key name","#oldid":"_id"}
             ,"ExpressionAttributeValues":{":UPDstr":{"S":"foo"},":UPDnum":{"N":"100"},":UPDkeyname":{"S":"val"},":oldid":{"S":"oldidvalue"}},"ConditionExpression":"#oldid = :oldid"}]
           );
           assert.equal(data, true);

@@ -342,13 +342,18 @@ describe('Dynamic Data', () => {
         mockCollection.withCondition.onCall(0).returns(mockCollection);
 
         var ctx = DD.getContext('partitionid');
+        
+        var genIdStub = sinon.stub(ctx, 'generateUuid');
+        genIdStub.onCall(0).returns('id1');
+        genIdStub.onCall(1).returns('id2');        
+        
         ctx.update({_id: 'id1', _rev: 'rev1', _class:'class', str: 'bar', num: 200})
         .promise()
         .done( (results)=>{
           //assert.fail('should not be here');
           //console.log(JSON.stringify(mockCollection.withCondition.getCall(0).args));
           assert.deepEqual(mockCollection.update.getCall(0).args,
-            [{"_id":"id1@partitionid-i","_range":"0"},{"str":"bar","num":200}]
+            [{"_id":"id1@partitionid-i","_range":"0"},{"str":"bar","num":200, _rev: 'id1'}]
           );
           assert.deepEqual(mockCollection.withCondition.getCall(0).args,
             [{"expr":"#oldrev = :oldrev","attrs":{"#oldrev":"_rev"},"values":{":oldrev":"rev1"}}]
@@ -372,6 +377,11 @@ describe('Dynamic Data', () => {
         mockCollection.withCondition.onCall(0).returns(mockCollection);
 
         var ctx = DD.getContext('partitionid');
+        var genIdStub = sinon.stub(ctx, 'generateUuid');
+        genIdStub.onCall(0).returns('id1');
+        genIdStub.onCall(1).returns('id2');        
+        
+        
         ctx.update({_id: 'id1', _rev: 'rev1', _class:'class', str: 'bar', num: 200})
         .promise()
         .done( (results)=>{
@@ -379,7 +389,7 @@ describe('Dynamic Data', () => {
         },(err)=>{
           //console.log(JSON.stringify(mockCollection.withCondition.getCall(0).args));
           assert.deepEqual(mockCollection.update.getCall(0).args,
-            [{"_id":"id1@partitionid-i","_range":"0"},{"str":"bar","num":200}]
+            [{"_id":"id1@partitionid-i","_range":"0"},{"str":"bar","num":200, _rev: 'id1'}]
           );
           assert.deepEqual(mockCollection.withCondition.getCall(0).args,
             [{"expr":"#oldrev = :oldrev","attrs":{"#oldrev":"_rev"},"values":{":oldrev":"rev1"}}]

@@ -29,6 +29,6 @@
     "sinon": "^1.15.4"
   },
   "scripts": {
-    "test": "mocha -R nyan --recursive test/unit"
+    "test": "mocha --recursive test/unit"
   }
 }
