@@ -20,9 +20,9 @@
     "aws-sdk": "^2.1.44",
     "big-integer": "^1.6.12",
     "jsep": "^0.3.0",
-    "node-uuid": "^1.4.3",
     "q": "^1.4.1",
-    "underscore": "^1.8.3"
+    "underscore": "^1.8.3",
+    "uuid": "^3.0.0"
   },
   "devDependencies": {
     "mocha": "^2.4.5",
